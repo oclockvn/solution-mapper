@@ -18,8 +18,16 @@ Debug output:
 
 ## Run
 
+With roots on the command line:
+
 ```powershell
 .\SolutionMapper\bin\Debug\net10.0\mapper.exe "C:\path\to\legacy-root" "C:\path\to\upgraded-root"
+```
+
+Or interactive (prompts for missing roots):
+
+```powershell
+.\SolutionMapper\bin\Debug\net10.0\mapper.exe
 ```
 
 Or from the output folder:

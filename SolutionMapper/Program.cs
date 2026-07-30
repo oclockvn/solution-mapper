@@ -3,13 +3,6 @@ using SolutionMapper.DiffTools;
 using SolutionMapper.Mapping;
 using SolutionMapper.UI;
 
-if (args.Length < 2)
-{
-    // ponytail: WriteLine — MarkupLine treats [...] as Spectre styles
-    AnsiConsole.WriteLine("Usage: mapper \"<legacy-root>\" \"<upgraded-root>\" [--export mapping.json]");
-    return 1;
-}
-
 string? exportPath = null;
 var positional = new List<string>();
 for (var i = 0; i < args.Length; i++)
@@ -18,6 +11,7 @@ for (var i = 0; i < args.Length; i++)
     {
         if (i + 1 >= args.Length)
         {
+            // ponytail: WriteLine — MarkupLine treats [...] as Spectre styles
             AnsiConsole.WriteLine("Error: --export requires a path.");
             return 1;
         }
@@ -29,14 +23,40 @@ for (var i = 0; i < args.Length; i++)
     }
 }
 
-if (positional.Count != 2)
+string legacyRoot;
+string upgradedRoot;
+
+if (positional.Count == 2)
+{
+    legacyRoot = Path.GetFullPath(positional[0]);
+    upgradedRoot = Path.GetFullPath(positional[1]);
+}
+else if (positional.Count > 2)
 {
     AnsiConsole.WriteLine("Usage: mapper \"<legacy-root>\" \"<upgraded-root>\" [--export mapping.json]");
+    AnsiConsole.WriteLine("Or run with no args to enter paths interactively.");
     return 1;
 }
+else
+{
+    // Interactive mode when roots missing
+    AnsiConsole.WriteLine("Solution Mapper — interactive setup");
+    AnsiConsole.WriteLine(new string('─', 44));
+    AnsiConsole.WriteLine();
 
-var legacyRoot = Path.GetFullPath(positional[0]);
-var upgradedRoot = Path.GetFullPath(positional[1]);
+    legacyRoot = positional.Count == 1
+        ? Path.GetFullPath(positional[0])
+        : PromptExistingDirectory("Legacy solution root:");
+
+    upgradedRoot = PromptExistingDirectory("Upgraded solution root:");
+
+    if (exportPath is null && AnsiConsole.Confirm("Export mapping JSON?", false))
+    {
+        exportPath = AnsiConsole.Prompt(
+            new TextPrompt<string>("Export path:")
+                .DefaultValue("mapping.json"));
+    }
+}
 
 try
 {
@@ -93,4 +113,19 @@ catch (Exception ex)
 {
     AnsiConsole.MarkupLine($"[red]{ex.Message.EscapeMarkup()}[/]");
     return 1;
+}
+
+static string PromptExistingDirectory(string title)
+{
+    var path = AnsiConsole.Prompt(
+        new TextPrompt<string>(title)
+            .Validate(p =>
+            {
+                if (string.IsNullOrWhiteSpace(p))
+                    return ValidationResult.Error("Path is required.");
+                return Directory.Exists(p)
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("Directory does not exist.");
+            }));
+    return Path.GetFullPath(path);
 }
