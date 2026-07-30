@@ -56,7 +56,8 @@ public static class PathAutocompletePrompt
                         new SelectionPrompt<string>()
                             .Title(selectionTitle)
                             .UseConverter(path => path.EscapeMarkup())
-                            .AddChoices(suggestions));
+                            .AddChoices(suggestions)
+                            .AddCancelResult(() => throw new OperationCanceledException()));
                 }
 
                 Render(buffer, ref renderedLength);
