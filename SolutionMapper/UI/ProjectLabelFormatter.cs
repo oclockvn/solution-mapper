@@ -8,7 +8,7 @@ public static class ProjectLabelFormatter
     {
         var status = m.Status switch
         {
-            MappingStatus.Ambiguous when m.IsOneToMany => "  (1→N)",
+            MappingStatus.Ambiguous when m.IsOneToMany => "  (1:N)",
             MappingStatus.Ambiguous => "  (ambiguous)",
             MappingStatus.LegacyOnly => "  legacy only",
             MappingStatus.UpgradedOnly => "  upgraded only",
@@ -45,7 +45,7 @@ public static class ProjectLabelFormatter
         var hasU = !string.IsNullOrEmpty(m.UpgradedFolder);
 
         if (hasL && hasU)
-            return $"L:{ShortPath(legacyRoot, m.LegacyFolder!)} → U:{ShortPath(upgradedRoot, m.UpgradedFolder!)}";
+            return $"L:{ShortPath(legacyRoot, m.LegacyFolder!)} -> U:{ShortPath(upgradedRoot, m.UpgradedFolder!)}";
         if (hasL)
             return $"L:{ShortPath(legacyRoot, m.LegacyFolder!)}";
         if (hasU)

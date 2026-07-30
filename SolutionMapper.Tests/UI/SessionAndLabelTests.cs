@@ -146,7 +146,7 @@ public class ProjectLabelFormatterTests
 
         var label = ProjectLabelFormatter.Format(m, legacyRoot, upgradedRoot);
 
-        Assert.Contains("(1→N)", label);
+        Assert.Contains("(1:N)", label);
         Assert.DoesNotContain("ambiguous", label);
         Assert.Contains("L:", label);
         Assert.Contains("U:", label);
