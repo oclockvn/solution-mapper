@@ -5,7 +5,8 @@ using SolutionMapper.UI;
 
 if (args.Length < 2)
 {
-    AnsiConsole.MarkupLine("Usage: mapper \"<legacy-root>\" \"<upgraded-root>\" [--export mapping.json]");
+    // ponytail: WriteLine — MarkupLine treats [...] as Spectre styles
+    AnsiConsole.WriteLine("Usage: mapper \"<legacy-root>\" \"<upgraded-root>\" [--export mapping.json]");
     return 1;
 }
 
@@ -17,7 +18,7 @@ for (var i = 0; i < args.Length; i++)
     {
         if (i + 1 >= args.Length)
         {
-            AnsiConsole.MarkupLine("Error: --export requires a path.");
+            AnsiConsole.WriteLine("Error: --export requires a path.");
             return 1;
         }
         exportPath = args[++i];
@@ -30,7 +31,7 @@ for (var i = 0; i < args.Length; i++)
 
 if (positional.Count != 2)
 {
-    AnsiConsole.MarkupLine("Usage: mapper \"<legacy-root>\" \"<upgraded-root>\" [--export mapping.json]");
+    AnsiConsole.WriteLine("Usage: mapper \"<legacy-root>\" \"<upgraded-root>\" [--export mapping.json]");
     return 1;
 }
 
@@ -41,12 +42,12 @@ try
 {
     if (!Directory.Exists(legacyRoot))
     {
-        AnsiConsole.MarkupLine($"Error: Legacy solution root does not exist.\n\n  {legacyRoot}");
+        AnsiConsole.WriteLine($"Error: Legacy solution root does not exist.\n\n  {legacyRoot}");
         return 1;
     }
     if (!Directory.Exists(upgradedRoot))
     {
-        AnsiConsole.MarkupLine($"Error: Upgraded solution root does not exist.\n\n  {upgradedRoot}");
+        AnsiConsole.WriteLine($"Error: Upgraded solution root does not exist.\n\n  {upgradedRoot}");
         return 1;
     }
 

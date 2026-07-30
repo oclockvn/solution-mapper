@@ -40,7 +40,8 @@ public static class ProjectPicker
     static string Format(ProjectMapping m) => m.Status switch
     {
         MappingStatus.Matched => m.Name,
-        MappingStatus.Ambiguous => $"{m.Name}  [ambiguous]",
+        // ponytail: avoid [] — Spectre may treat choice text as markup
+        MappingStatus.Ambiguous => $"{m.Name}  (ambiguous)",
         MappingStatus.LegacyOnly => $"{m.Name}  legacy only",
         MappingStatus.UpgradedOnly => $"{m.Name}  upgraded only",
         _ => m.Name
