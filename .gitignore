@@ -272,3 +272,6 @@ _LOCAL_UPLOAD/
 .claude/settings.local.json
 
 continual-learning*.json
+# Solution Mapper local exports (may contain private solution paths)
+mapping.json
+**/mapping.json

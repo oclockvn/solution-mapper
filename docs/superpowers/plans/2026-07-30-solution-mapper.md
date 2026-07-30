@@ -59,7 +59,7 @@
 - [ ] **Step 1: Create solution and projects via CLI**
 
 ```powershell
-cd C:\Users\ocloc\src\diff-mapper
+cd /path/to/diff-mapper
 rtk dotnet new sln -n SolutionMapper
 rtk dotnet new console -n SolutionMapper -o SolutionMapper -f net10.0
 rtk dotnet new xunit -n SolutionMapper.Tests -o SolutionMapper.Tests -f net10.0

@@ -42,7 +42,7 @@ public class ProjectMapperTests
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
-        legacy.AddProject("TallyMain/src/Accounts/Accounts.csproj");
+        legacy.AddProject("LegacyApp/src/Accounts/Accounts.csproj");
         upgraded.AddProject("solutions/api/src/Shared/Accounts/Accounts.csproj");
         upgraded.AddProject("solutions/web/src/Shared/Accounts/Accounts.csproj");
         upgraded.AddProject("solutions/reporting/src/Shared/Accounts/Accounts.csproj");
@@ -56,7 +56,7 @@ public class ProjectMapperTests
             Assert.Equal(MappingStatus.Ambiguous, m.Status);
             Assert.True(m.IsOneToMany);
             Assert.True(m.IsAmbiguous);
-            Assert.Equal(Path.Combine(legacy.Root, "TallyMain", "src", "Accounts"), m.LegacyFolder);
+            Assert.Equal(Path.Combine(legacy.Root, "LegacyApp", "src", "Accounts"), m.LegacyFolder);
             Assert.NotNull(m.UpgradedFolder);
         });
         Assert.Contains(accounts, m => m.UpgradedFolder!.Contains("api"));
