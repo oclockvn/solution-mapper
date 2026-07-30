@@ -24,25 +24,40 @@ public static class ProjectMapper
 
             if (leftList.Count == 1 && rightList.Count == 1)
             {
-                results.Add(Create(fileName, leftList[0], rightList[0], MappingStatus.Matched, 1.0, false));
+                results.Add(Create(fileName, leftList[0], rightList[0], MappingStatus.Matched, 1.0, false, false));
                 continue;
             }
 
             if (leftList.Count == 0)
             {
                 foreach (var r in rightList)
-                    results.Add(Create(fileName, null, r, MappingStatus.UpgradedOnly, 0, false));
+                    results.Add(Create(fileName, null, r, MappingStatus.UpgradedOnly, 0, false, false));
                 continue;
             }
 
             if (rightList.Count == 0)
             {
                 foreach (var l in leftList)
-                    results.Add(Create(fileName, l, null, MappingStatus.LegacyOnly, 0, false));
+                    results.Add(Create(fileName, l, null, MappingStatus.LegacyOnly, 0, false, false));
                 continue;
             }
 
-            // duplicates: greedy strongest pairs
+            // ponytail: shared project copied into many solutions → fan out 1×N / N×1
+            if (leftList.Count == 1 && rightList.Count > 1)
+            {
+                foreach (var r in rightList)
+                    results.Add(Create(fileName, leftList[0], r, MappingStatus.Ambiguous, 1.0, true, true));
+                continue;
+            }
+
+            if (rightList.Count == 1 && leftList.Count > 1)
+            {
+                foreach (var l in leftList)
+                    results.Add(Create(fileName, l, rightList[0], MappingStatus.Ambiguous, 1.0, true, true));
+                continue;
+            }
+
+            // M×N duplicates: greedy strongest pairs
             var leftMeta = leftList.Select(p => (Path: p, Meta: ProjectMetadataReader.TryRead(p))).ToList();
             var rightMeta = rightList.Select(p => (Path: p, Meta: ProjectMetadataReader.TryRead(p))).ToList();
             var usedRight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -59,23 +74,24 @@ public static class ProjectMapper
                 usedLeft.Add(pair.L);
                 usedRight.Add(pair.R);
                 var confidence = Math.Min(1.0, pair.Score / 175.0);
-                results.Add(Create(fileName, pair.L, pair.R, MappingStatus.Ambiguous, confidence, true));
+                results.Add(Create(fileName, pair.L, pair.R, MappingStatus.Ambiguous, confidence, true, false));
             }
 
             foreach (var l in leftList.Where(p => !usedLeft.Contains(p)))
-                results.Add(Create(fileName, l, null, MappingStatus.LegacyOnly, 0, false));
+                results.Add(Create(fileName, l, null, MappingStatus.LegacyOnly, 0, false, false));
             foreach (var r in rightList.Where(p => !usedRight.Contains(p)))
-                results.Add(Create(fileName, null, r, MappingStatus.UpgradedOnly, 0, false));
+                results.Add(Create(fileName, null, r, MappingStatus.UpgradedOnly, 0, false, false));
         }
 
         return results
             .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(m => m.UpgradedFolder ?? m.LegacyFolder, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
     static ProjectMapping Create(
         string fileName, string? legacyFile, string? upgradedFile,
-        MappingStatus status, double confidence, bool ambiguous) => new()
+        MappingStatus status, double confidence, bool ambiguous, bool oneToMany) => new()
     {
         Name = Path.GetFileNameWithoutExtension(fileName),
         ProjectFileName = fileName,
@@ -85,6 +101,7 @@ public static class ProjectMapper
         UpgradedFolder = upgradedFile is null ? null : Path.GetDirectoryName(upgradedFile),
         Status = status,
         MatchConfidence = confidence,
-        IsAmbiguous = ambiguous
+        IsAmbiguous = ambiguous,
+        IsOneToMany = oneToMany
     };
 }

@@ -39,16 +39,50 @@ else if (positional.Count > 2)
 }
 else
 {
-    // Interactive mode when roots missing
     AnsiConsole.WriteLine("Solution Mapper — interactive setup");
     AnsiConsole.WriteLine(new string('─', 44));
     AnsiConsole.WriteLine();
 
-    legacyRoot = positional.Count == 1
-        ? Path.GetFullPath(positional[0])
-        : PromptExistingDirectory("Legacy solution root:");
+    var reused = false;
+    if (positional.Count == 0)
+    {
+        var last = LastRootsStore.TryLoad();
+        if (last is not null)
+        {
+            AnsiConsole.WriteLine("Last roots:");
+            AnsiConsole.WriteLine($"  Legacy:   {last.LegacyRoot}");
+            AnsiConsole.WriteLine($"  Upgraded: {last.UpgradedRoot}");
+            AnsiConsole.WriteLine();
+            if (AnsiConsole.Confirm("Reuse these roots?", true))
+            {
+                legacyRoot = last.LegacyRoot;
+                upgradedRoot = last.UpgradedRoot;
+                reused = true;
+            }
+            else
+            {
+                legacyRoot = "";
+                upgradedRoot = "";
+            }
+        }
+        else
+        {
+            legacyRoot = "";
+            upgradedRoot = "";
+        }
+    }
+    else
+    {
+        legacyRoot = Path.GetFullPath(positional[0]);
+        upgradedRoot = "";
+    }
 
-    upgradedRoot = PromptExistingDirectory("Upgraded solution root:");
+    if (!reused)
+    {
+        if (string.IsNullOrEmpty(legacyRoot))
+            legacyRoot = PromptExistingDirectory("Legacy solution root:");
+        upgradedRoot = PromptExistingDirectory("Upgraded solution root:");
+    }
 
     if (exportPath is null && AnsiConsole.Confirm("Export mapping JSON?", false))
     {
@@ -70,6 +104,8 @@ try
         AnsiConsole.WriteLine($"Error: Upgraded solution root does not exist.\n\n  {upgradedRoot}");
         return 1;
     }
+
+    LastRootsStore.Save(legacyRoot, upgradedRoot);
 
     AnsiConsole.WriteLine("Solution Mapper");
     AnsiConsole.WriteLine(new string('─', 44));
@@ -94,7 +130,7 @@ try
     MappingSummary.Write(mappings);
     AnsiConsole.WriteLine();
 
-    var selected = ProjectPicker.Pick(mappings);
+    var selected = ProjectPicker.Pick(mappings, legacyRoot, upgradedRoot);
     if (selected is null || selected.Count == 0) return 0;
 
     var tool = DiffToolPicker.Pick(DiffToolDiscovery.GetAvailable());

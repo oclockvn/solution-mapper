@@ -19,4 +19,6 @@ public sealed record ProjectMapping
     public MappingStatus Status { get; init; }
     public double MatchConfidence { get; init; }
     public bool IsAmbiguous { get; init; }
+    /// <summary>True when one side has a single project and the other has many same-named copies.</summary>
+    public bool IsOneToMany { get; init; }
 }

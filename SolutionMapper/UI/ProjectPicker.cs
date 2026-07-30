@@ -5,7 +5,10 @@ namespace SolutionMapper.UI;
 
 public static class ProjectPicker
 {
-    public static IReadOnlyList<ProjectMapping>? Pick(IReadOnlyList<ProjectMapping> mappings)
+    public static IReadOnlyList<ProjectMapping>? Pick(
+        IReadOnlyList<ProjectMapping> mappings,
+        string legacyRoot,
+        string upgradedRoot)
     {
         if (mappings.Count == 0) return [];
 
@@ -15,7 +18,9 @@ public static class ProjectPicker
                 new TextPrompt<string>("Search projects (empty = all, Ctrl+C exit):").AllowEmpty());
             var filtered = string.IsNullOrWhiteSpace(filter)
                 ? mappings
-                : mappings.Where(m => m.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+                : mappings
+                    .Where(m => ProjectLabelFormatter.MatchesFilter(m, filter, legacyRoot, upgradedRoot))
+                    .ToList();
             if (filtered.Count == 0)
             {
                 AnsiConsole.MarkupLine("[yellow]No matches[/]");
@@ -29,21 +34,11 @@ public static class ProjectPicker
                     .PageSize(15)
                     .MoreChoicesText("[grey](Move up/down to reveal more)[/]")
                     .InstructionsText("[grey](Space to toggle, enter to confirm)[/]")
-                    .UseConverter(Format)
+                    .UseConverter(m => ProjectLabelFormatter.Format(m, legacyRoot, upgradedRoot))
                     .AddChoices(filtered));
 
             if (selected.Count > 0) return selected;
             if (!AnsiConsole.Confirm("Nothing selected. Search again?", true)) return selected;
         }
     }
-
-    static string Format(ProjectMapping m) => m.Status switch
-    {
-        MappingStatus.Matched => m.Name,
-        // ponytail: avoid [] — Spectre may treat choice text as markup
-        MappingStatus.Ambiguous => $"{m.Name}  (ambiguous)",
-        MappingStatus.LegacyOnly => $"{m.Name}  legacy only",
-        MappingStatus.UpgradedOnly => $"{m.Name}  upgraded only",
-        _ => m.Name
-    };
 }

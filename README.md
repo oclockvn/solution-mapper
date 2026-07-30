@@ -24,7 +24,7 @@ With roots on the command line:
 .\SolutionMapper\bin\Debug\net10.0\mapper.exe "C:\path\to\legacy-root" "C:\path\to\upgraded-root"
 ```
 
-Or interactive (prompts for missing roots):
+Or interactive (prompts for missing roots; offers last roots if saved):
 
 ```powershell
 .\SolutionMapper\bin\Debug\net10.0\mapper.exe
