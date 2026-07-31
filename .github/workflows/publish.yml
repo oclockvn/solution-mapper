@@ -1,0 +1,61 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install GitVersion
+        run: dotnet tool install --global GitVersion.Tool
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          VERSION_JSON=$(dotnet-gitversion /output json)
+          SEM_VER=$(echo "$VERSION_JSON" | jq -r '.SemVer')
+          NUGET_VERSION=$(echo "$VERSION_JSON" | jq -r '.NuGetVersionV2')
+          echo "SEM_VER=$SEM_VER" >> "$GITHUB_ENV"
+          echo "NUGET_VERSION=$NUGET_VERSION" >> "$GITHUB_ENV"
+          echo "sem_ver=$SEM_VER" >> "$GITHUB_OUTPUT"
+          echo "nuget_version=$NUGET_VERSION" >> "$GITHUB_OUTPUT"
+          echo "SemVer=$SEM_VER NuGetVersionV2=$NUGET_VERSION"
+
+      - name: Test
+        run: dotnet test SolutionMapper.sln -c Release
+
+      - name: Pack
+        run: >
+          dotnet pack SolutionMapper/SolutionMapper.csproj
+          -c Release
+          -o ./nupkg
+          -p:Version=${{ env.SEM_VER }}
+          -p:PackageVersion=${{ env.NUGET_VERSION }}
+
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ vars.NUGET_USERNAME }}
+
+      - name: Push to NuGet.org
+        run: >
+          dotnet nuget push ./nupkg/*.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

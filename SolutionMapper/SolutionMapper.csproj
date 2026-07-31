@@ -5,8 +5,15 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>mapper</AssemblyName>
+    <AssemblyName>SolutionMapper</AssemblyName>
     <RootNamespace>SolutionMapper</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>SolutionMapper</ToolCommandName>
+    <PackageId>SolutionMapper</PackageId>
+    <Authors>ocloc</Authors>
+    <Description>Map matching .NET projects across legacy vs upgraded solution trees and open them in a diff tool (read-only).</Description>
+    <PackageTags>dotnet;tool;diff;migration</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

@@ -134,13 +134,19 @@ try
     AnsiConsole.WriteLine("Upgraded:");
     AnsiConsole.WriteLine($"  {upgradedRoot}");
     AnsiConsole.WriteLine();
-    AnsiConsole.WriteLine("Scanning projects...");
     AnsiConsole.WriteLine();
 
-    ProjectDiscovery.EnsureHasProjects(legacyRoot, "Legacy");
-    ProjectDiscovery.EnsureHasProjects(upgradedRoot, "Upgraded");
-
-    var mappings = ProjectMapper.Map(legacyRoot, upgradedRoot);
+    IReadOnlyList<ProjectMapping> mappings = null!;
+    AnsiConsole.Status()
+        .Spinner(Spinner.Known.Dots)
+        .Start("Scanning projects...", ctx =>
+        {
+            ProjectDiscovery.EnsureHasProjects(legacyRoot, "Legacy");
+            ctx.Status("Scanning upgraded...");
+            ProjectDiscovery.EnsureHasProjects(upgradedRoot, "Upgraded");
+            ctx.Status("Mapping projects...");
+            mappings = ProjectMapper.Map(legacyRoot, upgradedRoot);
+        });
 
     if (exportPath is not null)
         MappingExport.Write(Path.GetFullPath(exportPath), legacyRoot, upgradedRoot, mappings);
