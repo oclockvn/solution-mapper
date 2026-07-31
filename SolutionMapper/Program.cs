@@ -77,18 +77,39 @@ else
         upgradedRoot = "";
     }
 
-    if (!reused)
+    try
     {
-        if (string.IsNullOrEmpty(legacyRoot))
-            legacyRoot = PromptExistingDirectory("Legacy solution root:");
-        upgradedRoot = PromptExistingDirectory("Upgraded solution root:");
-    }
+        if (!reused)
+        {
+            if (string.IsNullOrEmpty(legacyRoot))
+                legacyRoot = PathAutocompletePrompt.Prompt(
+                    "Legacy solution root:",
+                    PathKind.Directory,
+                    p => Directory.Exists(p)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("Directory does not exist."));
+            upgradedRoot = PathAutocompletePrompt.Prompt(
+                "Upgraded solution root:",
+                PathKind.Directory,
+                p => Directory.Exists(p)
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("Directory does not exist."));
+        }
 
-    if (exportPath is null && AnsiConsole.Confirm("Export mapping JSON?", false))
+        if (exportPath is null && AnsiConsole.Confirm("Export mapping JSON?", false))
+        {
+            exportPath = PathAutocompletePrompt.Prompt(
+                "Export path:",
+                PathKind.FileOrDirectory,
+                p => string.IsNullOrWhiteSpace(p)
+                    ? ValidationResult.Error("Path is required.")
+                    : ValidationResult.Success());
+        }
+    }
+    catch (OperationCanceledException)
     {
-        exportPath = AnsiConsole.Prompt(
-            new TextPrompt<string>("Export path:")
-                .DefaultValue("mapping.json"));
+        AnsiConsole.WriteLine("Canceled.");
+        return 1;
     }
 }
 
@@ -151,17 +172,3 @@ catch (Exception ex)
     return 1;
 }
 
-static string PromptExistingDirectory(string title)
-{
-    var path = AnsiConsole.Prompt(
-        new TextPrompt<string>(title)
-            .Validate(p =>
-            {
-                if (string.IsNullOrWhiteSpace(p))
-                    return ValidationResult.Error("Path is required.");
-                return Directory.Exists(p)
-                    ? ValidationResult.Success()
-                    : ValidationResult.Error("Directory does not exist.");
-            }));
-    return Path.GetFullPath(path);
-}
