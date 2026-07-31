@@ -17,14 +17,15 @@ public static class PathCompletion
         var parent = Path.GetDirectoryName(buffer);
         var prefix = Path.GetFileName(buffer);
 
-        if (parent is null && buffer.Length >= 2 && buffer[1] == ':')
+        // Windows: GetDirectoryName("D:") is null; some hosts return "".
+        if (string.IsNullOrEmpty(parent) && buffer.Length >= 2 && buffer[1] == ':')
         {
             parent = buffer[..2] + Path.DirectorySeparatorChar;
             prefix = buffer.Length > 2 ? buffer[2..] : "";
         }
 
         return new PathParseResult(
-            parent is null ? null : NormalizeSeparators(parent),
+            string.IsNullOrEmpty(parent) ? null : NormalizeSeparators(parent),
             prefix ?? "",
             false);
     }
@@ -92,5 +93,6 @@ public static class PathCompletion
     }
 
     private static string NormalizeSeparators(string path) =>
-        path.Replace('/', Path.DirectorySeparatorChar);
+        path.Replace('/', Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar);
 }

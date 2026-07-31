@@ -43,8 +43,8 @@ public class ProjectLabelFormatterTests
     [Fact]
     public void Format_matched_shows_both_relative_paths_without_status()
     {
-        var legacyRoot = @"C:\Legacy";
-        var upgradedRoot = @"C:\Net10";
+        var legacyRoot = Path.Combine(Path.GetTempPath(), "Legacy");
+        var upgradedRoot = Path.Combine(Path.GetTempPath(), "Net10");
         var m = new ProjectMapping
         {
             Name = "Billing",
@@ -60,8 +60,8 @@ public class ProjectLabelFormatterTests
 
         Assert.Contains("Billing", label);
         Assert.DoesNotContain("ambiguous", label);
-        Assert.Contains(@"L:Services\Billing", label);
-        Assert.Contains(@"U:src\Billing", label);
+        Assert.Contains($"L:{Path.Combine("Services", "Billing")}", label);
+        Assert.Contains($"U:{Path.Combine("src", "Billing")}", label);
         Assert.DoesNotContain("[", label);
         Assert.DoesNotContain("]", label);
     }
@@ -69,8 +69,8 @@ public class ProjectLabelFormatterTests
     [Fact]
     public void Format_upgraded_only_includes_status_and_U_path()
     {
-        var legacyRoot = @"C:\Legacy";
-        var upgradedRoot = @"C:\Net10";
+        var legacyRoot = Path.Combine(Path.GetTempPath(), "Legacy");
+        var upgradedRoot = Path.Combine(Path.GetTempPath(), "Net10");
         var m = new ProjectMapping
         {
             Name = "Accounts",
@@ -84,15 +84,15 @@ public class ProjectLabelFormatterTests
         var label = ProjectLabelFormatter.Format(m, legacyRoot, upgradedRoot);
 
         Assert.Contains("Accounts  upgraded only", label);
-        Assert.Contains(@"U:src\Foo\Accounts", label);
+        Assert.Contains($"U:{Path.Combine("src", "Foo", "Accounts")}", label);
         Assert.DoesNotContain("L:", label);
     }
 
     [Fact]
     public void Format_ambiguous_includes_status_and_both_paths()
     {
-        var legacyRoot = @"C:\Legacy";
-        var upgradedRoot = @"C:\Net10";
+        var legacyRoot = Path.Combine(Path.GetTempPath(), "Legacy");
+        var upgradedRoot = Path.Combine(Path.GetTempPath(), "Net10");
         var m = new ProjectMapping
         {
             Name = "Accounts",
@@ -114,8 +114,8 @@ public class ProjectLabelFormatterTests
     [Fact]
     public void MatchesFilter_matches_relative_path_segment()
     {
-        var legacyRoot = @"C:\Legacy";
-        var upgradedRoot = @"C:\Net10";
+        var legacyRoot = Path.Combine(Path.GetTempPath(), "Legacy");
+        var upgradedRoot = Path.Combine(Path.GetTempPath(), "Net10");
         var m = new ProjectMapping
         {
             Name = "Accounts",
@@ -124,15 +124,15 @@ public class ProjectLabelFormatterTests
             Status = MappingStatus.UpgradedOnly
         };
 
-        Assert.True(ProjectLabelFormatter.MatchesFilter(m, @"src\Foo", legacyRoot, upgradedRoot));
+        Assert.True(ProjectLabelFormatter.MatchesFilter(m, Path.Combine("src", "Foo"), legacyRoot, upgradedRoot));
         Assert.False(ProjectLabelFormatter.MatchesFilter(m, "Nope", legacyRoot, upgradedRoot));
     }
 
     [Fact]
     public void Format_one_to_many_shows_arrow_label()
     {
-        var legacyRoot = @"C:\Legacy";
-        var upgradedRoot = @"C:\Net10";
+        var legacyRoot = Path.Combine(Path.GetTempPath(), "Legacy");
+        var upgradedRoot = Path.Combine(Path.GetTempPath(), "Net10");
         var m = new ProjectMapping
         {
             Name = "Accounts",

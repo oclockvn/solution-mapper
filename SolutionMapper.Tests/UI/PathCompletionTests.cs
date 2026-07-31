@@ -19,6 +19,9 @@ public class PathCompletionTests
     [Fact]
     public void Parse_drive_root_with_trailing_separator()
     {
+        if (!OperatingSystem.IsWindows())
+            return; // ponytail: drive-letter paths are Windows-only
+
         var result = PathCompletion.Parse(@"D:\");
 
         Assert.False(result.SuggestDrives);
@@ -29,6 +32,9 @@ public class PathCompletionTests
     [Fact]
     public void Parse_drive_without_trailing_separator()
     {
+        if (!OperatingSystem.IsWindows())
+            return; // ponytail: drive-letter paths are Windows-only
+
         var result = PathCompletion.Parse("D:");
 
         Assert.False(result.SuggestDrives);
@@ -39,6 +45,9 @@ public class PathCompletionTests
     [Fact]
     public void Parse_partial_segment_on_drive()
     {
+        if (!OperatingSystem.IsWindows())
+            return; // ponytail: drive-letter paths are Windows-only
+
         var result = PathCompletion.Parse(@"D:\p");
 
         Assert.False(result.SuggestDrives);
@@ -49,31 +58,55 @@ public class PathCompletionTests
     [Fact]
     public void Parse_directory_with_trailing_separator()
     {
-        var result = PathCompletion.Parse(@"D:\proj\");
+        using var fixture = new PathCompletionFixture();
+        var buffer = fixture.Root;
+
+        var result = PathCompletion.Parse(buffer);
 
         Assert.False(result.SuggestDrives);
-        Assert.Equal(@"D:\proj\", result.ParentDirectory);
+        Assert.Equal(fixture.Root, result.ParentDirectory);
         Assert.Equal("", result.Prefix);
     }
 
     [Fact]
     public void Parse_directory_with_forward_slash_trailing_separator()
     {
-        var result = PathCompletion.Parse(@"D:\proj/");
+        using var fixture = new PathCompletionFixture();
+        var mixed = fixture.Root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Replace(Path.DirectorySeparatorChar, '/') + "/";
+
+        var result = PathCompletion.Parse(mixed);
 
         Assert.False(result.SuggestDrives);
-        Assert.Equal(@"D:\proj\", result.ParentDirectory);
+        Assert.Equal(fixture.Root, result.ParentDirectory);
         Assert.Equal("", result.Prefix);
+    }
+
+    [Fact]
+    public void Parse_partial_segment_under_directory()
+    {
+        using var fixture = new PathCompletionFixture();
+        var buffer = fixture.Root + "p";
+
+        var result = PathCompletion.Parse(buffer);
+
+        Assert.False(result.SuggestDrives);
+        Assert.Equal(
+            fixture.Root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            result.ParentDirectory);
+        Assert.Equal("p", result.Prefix);
     }
 
     [Fact]
     public void GetSuggestions_empty_buffer_returns_logical_drives()
     {
         var suggestions = PathCompletion.GetSuggestions("", PathKind.Directory);
+        var expected = Environment.GetLogicalDrives()
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
+            .Take(PathCompletion.DefaultMax)
+            .ToList();
 
-        Assert.NotEmpty(suggestions);
-        Assert.All(suggestions, s => Assert.EndsWith("\\", s));
-        Assert.True(suggestions.Count <= PathCompletion.DefaultMax);
+        Assert.Equal(expected, suggestions);
     }
 
     [Fact]
