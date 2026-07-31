@@ -134,7 +134,6 @@ try
     AnsiConsole.WriteLine("Upgraded:");
     AnsiConsole.WriteLine($"  {upgradedRoot}");
     AnsiConsole.WriteLine();
-    AnsiConsole.WriteLine();
 
     IReadOnlyList<ProjectMapping> mappings = null!;
     AnsiConsole.Status()
