@@ -27,14 +27,16 @@ jobs:
         id: version
         shell: bash
         run: |
+          # GitVersion 6 removed NuGetVersionV2; SemVer is valid for nuget.org (SemVer 2.0).
           VERSION_JSON=$(dotnet-gitversion /output json)
           SEM_VER=$(echo "$VERSION_JSON" | jq -r '.SemVer')
-          NUGET_VERSION=$(echo "$VERSION_JSON" | jq -r '.NuGetVersionV2')
+          if [[ -z "$SEM_VER" || "$SEM_VER" == "null" ]]; then
+            echo "GitVersion SemVer missing: $VERSION_JSON" >&2
+            exit 1
+          fi
           echo "SEM_VER=$SEM_VER" >> "$GITHUB_ENV"
-          echo "NUGET_VERSION=$NUGET_VERSION" >> "$GITHUB_ENV"
           echo "sem_ver=$SEM_VER" >> "$GITHUB_OUTPUT"
-          echo "nuget_version=$NUGET_VERSION" >> "$GITHUB_OUTPUT"
-          echo "SemVer=$SEM_VER NuGetVersionV2=$NUGET_VERSION"
+          echo "SemVer=$SEM_VER"
 
       - name: Test
         run: dotnet test SolutionMapper.sln -c Release
@@ -45,7 +47,7 @@ jobs:
           -c Release
           -o ./nupkg
           -p:Version=${{ env.SEM_VER }}
-          -p:PackageVersion=${{ env.NUGET_VERSION }}
+          -p:PackageVersion=${{ env.SEM_VER }}
 
       - name: NuGet login
         uses: NuGet/login@v1
