@@ -120,8 +120,11 @@ public static class PathAutocompletePrompt
 
     private static void Render(string buffer, ref int renderedLength)
     {
+        // ponytail: raw Console + erase-line — Spectre \r redraw often prints a new line in Cursor/Windows terminals
         var line = $"> {buffer}";
-        AnsiConsole.Write(new Text($"\r{line}{new string(' ', Math.Max(0, renderedLength - line.Length))}"));
+        Console.Write("\x1b[2K\r");
+        Console.Write(line);
+        Console.Out.Flush();
         renderedLength = line.Length;
     }
 }
