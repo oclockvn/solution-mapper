@@ -77,18 +77,36 @@ else
         upgradedRoot = "";
     }
 
-    if (!reused)
+    try
     {
-        if (string.IsNullOrEmpty(legacyRoot))
-            legacyRoot = PromptExistingDirectory("Legacy solution root:");
-        upgradedRoot = PromptExistingDirectory("Upgraded solution root:");
-    }
+        if (!reused)
+        {
+            if (string.IsNullOrEmpty(legacyRoot))
+                legacyRoot = PathAutocompletePrompt.Prompt(
+                    "Legacy solution root:",
+                    PathKind.Directory);
+            upgradedRoot = PathAutocompletePrompt.Prompt(
+                "Upgraded solution root:",
+                PathKind.Directory);
+        }
 
-    if (exportPath is null && AnsiConsole.Confirm("Export mapping JSON?", false))
+        if (exportPath is null && AnsiConsole.Confirm("Export mapping JSON?", false))
+        {
+            exportPath = PathAutocompletePrompt.Prompt(
+                "Export path:",
+                PathKind.FileOrDirectory,
+                initial: "mapping.json");
+        }
+    }
+    catch (OperationCanceledException)
     {
-        exportPath = AnsiConsole.Prompt(
-            new TextPrompt<string>("Export path:")
-                .DefaultValue("mapping.json"));
+        AnsiConsole.WriteLine("Canceled.");
+        return 1;
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]{ex.Message.EscapeMarkup()}[/]");
+        return 1;
     }
 }
 
@@ -116,13 +134,18 @@ try
     AnsiConsole.WriteLine("Upgraded:");
     AnsiConsole.WriteLine($"  {upgradedRoot}");
     AnsiConsole.WriteLine();
-    AnsiConsole.WriteLine("Scanning projects...");
-    AnsiConsole.WriteLine();
 
-    ProjectDiscovery.EnsureHasProjects(legacyRoot, "Legacy");
-    ProjectDiscovery.EnsureHasProjects(upgradedRoot, "Upgraded");
-
-    var mappings = ProjectMapper.Map(legacyRoot, upgradedRoot);
+    IReadOnlyList<ProjectMapping> mappings = null!;
+    AnsiConsole.Status()
+        .Spinner(Spinner.Known.Dots)
+        .Start("Scanning projects...", ctx =>
+        {
+            ProjectDiscovery.EnsureHasProjects(legacyRoot, "Legacy");
+            ctx.Status("Scanning upgraded...");
+            ProjectDiscovery.EnsureHasProjects(upgradedRoot, "Upgraded");
+            ctx.Status("Mapping projects...");
+            mappings = ProjectMapper.Map(legacyRoot, upgradedRoot);
+        });
 
     if (exportPath is not null)
         MappingExport.Write(Path.GetFullPath(exportPath), legacyRoot, upgradedRoot, mappings);
@@ -151,17 +174,3 @@ catch (Exception ex)
     return 1;
 }
 
-static string PromptExistingDirectory(string title)
-{
-    var path = AnsiConsole.Prompt(
-        new TextPrompt<string>(title)
-            .Validate(p =>
-            {
-                if (string.IsNullOrWhiteSpace(p))
-                    return ValidationResult.Error("Path is required.");
-                return Directory.Exists(p)
-                    ? ValidationResult.Success()
-                    : ValidationResult.Error("Directory does not exist.");
-            }));
-    return Path.GetFullPath(path);
-}

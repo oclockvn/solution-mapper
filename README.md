@@ -2,7 +2,7 @@
 
 Windows console tool that maps projects between a **legacy** .NET solution tree and an **upgraded** one when folder layouts differ. You pick a matched pair and open both project folders in a diff tool. The tool is **read-only** — it never copies or syncs files.
 
-Binary name: `mapper.exe` (project: `SolutionMapper`).
+Binary: `mapper.exe`.
 
 ## Build
 
@@ -24,7 +24,7 @@ With roots on the command line:
 .\SolutionMapper\bin\Debug\net10.0\mapper.exe "C:\path\to\legacy-root" "C:\path\to\upgraded-root"
 ```
 
-Or interactive (prompts for missing roots; offers last roots if saved):
+Or interactive (prompts for missing roots; offers last roots if saved; Tab completes paths):
 
 ```powershell
 .\SolutionMapper\bin\Debug\net10.0\mapper.exe
