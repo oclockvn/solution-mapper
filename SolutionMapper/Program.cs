@@ -84,16 +84,10 @@ else
             if (string.IsNullOrEmpty(legacyRoot))
                 legacyRoot = PathAutocompletePrompt.Prompt(
                     "Legacy solution root:",
-                    PathKind.Directory,
-                    p => Directory.Exists(p)
-                        ? ValidationResult.Success()
-                        : ValidationResult.Error("Directory does not exist."));
+                    PathKind.Directory);
             upgradedRoot = PathAutocompletePrompt.Prompt(
                 "Upgraded solution root:",
-                PathKind.Directory,
-                p => Directory.Exists(p)
-                    ? ValidationResult.Success()
-                    : ValidationResult.Error("Directory does not exist."));
+                PathKind.Directory);
         }
 
         if (exportPath is null && AnsiConsole.Confirm("Export mapping JSON?", false))
@@ -101,14 +95,17 @@ else
             exportPath = PathAutocompletePrompt.Prompt(
                 "Export path:",
                 PathKind.FileOrDirectory,
-                p => string.IsNullOrWhiteSpace(p)
-                    ? ValidationResult.Error("Path is required.")
-                    : ValidationResult.Success());
+                initial: "mapping.json");
         }
     }
     catch (OperationCanceledException)
     {
         AnsiConsole.WriteLine("Canceled.");
+        return 1;
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]{ex.Message.EscapeMarkup()}[/]");
         return 1;
     }
 }

@@ -27,6 +27,16 @@ public class PathCompletionTests
     }
 
     [Fact]
+    public void Parse_drive_without_trailing_separator()
+    {
+        var result = PathCompletion.Parse("D:");
+
+        Assert.False(result.SuggestDrives);
+        Assert.Equal(@"D:\", result.ParentDirectory);
+        Assert.Equal("", result.Prefix);
+    }
+
+    [Fact]
     public void Parse_partial_segment_on_drive()
     {
         var result = PathCompletion.Parse(@"D:\p");

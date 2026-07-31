@@ -55,19 +55,9 @@ public static class PathCompletion
 
     private static void EnumerateSuggestions(string parent, string prefix, PathKind kind, List<string> results)
     {
-        IEnumerable<string> dirs;
         try
         {
-            dirs = Directory.EnumerateDirectories(parent);
-        }
-        catch
-        {
-            return;
-        }
-
-        foreach (var dir in dirs)
-        {
-            try
+            foreach (var dir in Directory.EnumerateDirectories(parent))
             {
                 var name = Path.GetFileName(dir);
                 if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
@@ -75,28 +65,18 @@ public static class PathCompletion
 
                 results.Add(NormalizeSeparators(dir) + Path.DirectorySeparatorChar);
             }
-            catch
-            {
-                // ponytail: skip inaccessible entries
-            }
+        }
+        catch
+        {
+            // ponytail: skip inaccessible entries
         }
 
         if (kind != PathKind.FileOrDirectory)
             return;
 
-        IEnumerable<string> files;
         try
         {
-            files = Directory.EnumerateFiles(parent);
-        }
-        catch
-        {
-            return;
-        }
-
-        foreach (var file in files)
-        {
-            try
+            foreach (var file in Directory.EnumerateFiles(parent))
             {
                 var name = Path.GetFileName(file);
                 if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
@@ -104,10 +84,10 @@ public static class PathCompletion
 
                 results.Add(NormalizeSeparators(file));
             }
-            catch
-            {
-                // ponytail: skip inaccessible entries
-            }
+        }
+        catch
+        {
+            // ponytail: skip inaccessible entries
         }
     }
 

@@ -7,11 +7,23 @@ public static class PathAutocompletePrompt
     public static string Prompt(
         string title,
         PathKind kind,
-        Func<string, ValidationResult>? validate = null)
+        Func<string, ValidationResult>? validate = null,
+        string initial = "")
     {
+        validate ??= path => ValidateDefault(path, kind);
+
+        if (Console.IsInputRedirected)
+        {
+            var prompt = new TextPrompt<string>(title).Validate(validate);
+            if (!string.IsNullOrEmpty(initial))
+                prompt.DefaultValue(initial);
+
+            return Path.GetFullPath(AnsiConsole.Prompt(prompt));
+        }
+
         AnsiConsole.WriteLine(title);
 
-        var buffer = "";
+        var buffer = initial;
         var renderedLength = 0;
         Render(buffer, ref renderedLength);
 
@@ -40,7 +52,7 @@ public static class PathAutocompletePrompt
                 if (suggestions.Count == 0)
                 {
                     AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine("[yellow]No matches[/]");
+                    AnsiConsole.MarkupLine("[yellow]No matches.[/]");
                 }
                 else if (suggestions.Count == 1)
                 {
@@ -67,7 +79,7 @@ public static class PathAutocompletePrompt
             if (key.Key == ConsoleKey.Enter)
             {
                 AnsiConsole.WriteLine();
-                var result = validate?.Invoke(buffer) ?? ValidateDefault(buffer, kind);
+                var result = validate(buffer);
                 if (!result.Successful)
                 {
                     AnsiConsole.MarkupLine($"[red]{(result.Message ?? "Invalid path.").EscapeMarkup()}[/]");
