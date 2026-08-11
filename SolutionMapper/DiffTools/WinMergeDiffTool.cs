@@ -10,8 +10,10 @@ public sealed class WinMergeDiffTool : IDiffTool
 
     public string? FindExecutable()
     {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string[] candidates =
         [
+            Path.Combine(localAppData, "Programs", "WinMerge", "WinMergeU.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "WinMerge", "WinMergeU.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "WinMerge", "WinMergeU.exe"),
             "WinMergeU.exe"

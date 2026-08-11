@@ -10,13 +10,15 @@ public sealed class BeyondCompareDiffTool : IDiffTool
 
     public string? FindExecutable()
     {
-        var programFiles = new[]
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var roots = new[]
         {
+            Path.Combine(localAppData, "Programs"),
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
         };
 
-        foreach (var root in programFiles)
+        foreach (var root in roots)
         {
             if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
             foreach (var dir in Directory.EnumerateDirectories(root, "Beyond Compare*"))
