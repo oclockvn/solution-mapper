@@ -90,6 +90,60 @@ If installed, these are discovered automatically:
 - Beyond Compare
 - VS Code
 
+## Releasing a new NuGet version
+
+The tool is published to [nuget.org](https://www.nuget.org/packages/SolutionMapper) as a
+.NET global tool (`PackAsTool`, command `SolutionMapper`). Two GitHub Actions workflows drive it:
+
+- **CI** (`.github/workflows/ci.yml`) — runs on every push to `master` and every PR: restore,
+  build (Release), test. It publishes nothing; it's just the gate.
+- **Publish** (`.github/workflows/publish.yml`) — runs only when a tag matching `v*` is pushed:
+  determine version → test → `dotnet pack` → `dotnet nuget push` to nuget.org.
+
+The package version is **not** stored in the `.csproj`. It's computed by
+[GitVersion](https://gitversion.net/) from git history and the tag you push (`GitVersion.yml`,
+`mode: ContinuousDelivery`, tag prefix `v` or `V`). Tag `v1.4.0` produces package version `1.4.0`.
+
+### Steps
+
+1. Merge your changes to `master` via PR and let CI pass.
+2. Pull the latest `master` locally:
+
+   ```powershell
+   git checkout master
+   git pull --ff-only
+   ```
+
+3. Pick the next [SemVer](https://semver.org/) (e.g. `v1.3.1` for a fix, `v1.4.0` for a feature),
+   tag the merge commit, and push the tag:
+
+   ```powershell
+   git tag v1.4.0
+   git push origin v1.4.0
+   ```
+
+   The tag **must** start with `v` (or `V`) — a bare `1.4.0` tag won't trigger the workflow.
+
+4. Watch the **Publish** run in the Actions tab. It runs in the `prod` environment; if that
+   environment requires a reviewer, approve it. NuGet auth uses OIDC trusted publishing
+   (`NuGet/login`), so no API key is stored in the repo.
+5. Once the run is green, verify at `https://www.nuget.org/packages/SolutionMapper` (indexing
+   takes a few minutes), then:
+
+   ```powershell
+   dotnet tool install --global SolutionMapper --version 1.4.0
+   ```
+
+### Notes
+
+- **nuget.org versions are immutable.** `dotnet nuget push` uses `--skip-duplicate`, so
+  re-pushing an existing version is a no-op. To ship a fix, cut a new tag/version.
+- If you tag the wrong commit, delete the tag locally and remotely
+  (`git push origin :refs/tags/v1.4.0`) and re-tag **before** the Publish run finishes its push.
+  After it reaches nuget.org, that version number is spent.
+- Prerequisites (already set up): repo variable `NUGET_USERNAME`, a nuget.org trusted-publishing
+  policy for this repo/workflow, and the `prod` GitHub environment.
+
 ## Notes
 
 - Roots are scanned for `*.csproj`; matching is by project name / path heuristics.
