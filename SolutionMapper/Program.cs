@@ -3,6 +3,10 @@ using SolutionMapper.DiffTools;
 using SolutionMapper.Mapping;
 using SolutionMapper.UI;
 
+Trace.Log($"build: {typeof(Program).Assembly.GetName().Version} at {typeof(Program).Assembly.Location}");
+
+AppDomain.CurrentDomain.ProcessExit += (_, _) => Metrics.Dump("solution-mapper run");
+
 string? exportPath = null;
 var positional = new List<string>();
 for (var i = 0; i < args.Length; i++)
@@ -136,15 +140,22 @@ try
     AnsiConsole.WriteLine();
 
     IReadOnlyList<ProjectMapping> mappings = null!;
+    ProjectGraph legacyGraph = null!;
+    using (Metrics.Measure("pipeline: scan + map + graph"))
     AnsiConsole.Status()
         .Spinner(Spinner.Known.Dots)
         .Start("Scanning projects...", ctx =>
         {
-            ProjectDiscovery.EnsureHasProjects(legacyRoot, "Legacy");
+            var legacyScan = SolutionScan.Create(legacyRoot);
+            legacyScan.EnsureHasProjects();
             ctx.Status("Scanning upgraded...");
-            ProjectDiscovery.EnsureHasProjects(upgradedRoot, "Upgraded");
+            var upgradedScan = SolutionScan.Create(upgradedRoot);
+            upgradedScan.EnsureHasProjects();
             ctx.Status("Mapping projects...");
-            mappings = ProjectMapper.Map(legacyRoot, upgradedRoot);
+            mappings = ProjectMapper.Map(legacyScan, upgradedScan);
+            ctx.Status("Building dependency graph...");
+            legacyGraph = ProjectGraph.Build(legacyScan.ProjectFiles);
+            Trace.Log($"legacy graph built from {legacyScan.ProjectFiles.Count} project file(s)");
         });
 
     if (exportPath is not null)
@@ -153,18 +164,28 @@ try
     MappingSummary.Write(mappings);
     AnsiConsole.WriteLine();
 
-    var selected = ProjectPicker.Pick(mappings, legacyRoot, upgradedRoot);
+    ActionMenu.Run(mappings, legacyRoot, upgradedRoot);
+
+    var selected = ProjectPicker.Pick(mappings, legacyRoot, upgradedRoot, legacyGraph);
     if (selected is null || selected.Count == 0) return 0;
 
     var tool = DiffToolPicker.Pick(DiffToolDiscovery.GetAvailable());
     var empty = EmptyFolder.GetPath();
 
-    foreach (var m in selected)
+    var pairs = selected
+        .Select(m => new DiffPair(m.LegacyFolder ?? empty, m.UpgradedFolder ?? empty, m.Name))
+        .ToList();
+
+    if (pairs.Count > 1 && !tool.SupportsSingleWindow)
     {
-        var left = m.LegacyFolder ?? empty;
-        var right = m.UpgradedFolder ?? empty;
-        tool.Open(left, right);
+        AnsiConsole.MarkupLine(
+            "[yellow]⚠ {0} will open {1} separate windows.[/]", tool.Name, pairs.Count);
+        if (!AnsiConsole.Confirm("Continue?", false))
+            return 0;
     }
+
+    Trace.Log($"opening {pairs.Count} pair(s) with {tool.Name} (singleWindow={tool.SupportsSingleWindow})");
+    tool.OpenMany(pairs);
 
     return 0;
 }

@@ -5,4 +5,5 @@ public sealed record ProjectMetadata(
     string? AssemblyName,
     string? TargetFramework,
     string? RootNamespace,
-    IReadOnlyList<string> ProjectReferenceNames);
+    IReadOnlyList<string> ProjectReferenceNames,
+    IReadOnlyList<string> ProjectReferencePaths);

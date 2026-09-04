@@ -30,11 +30,46 @@ public sealed class WinMergeDiffTool : IDiffTool
         return null;
     }
 
+    public bool SupportsSingleWindow => true;
+
     public void Open(string leftFolder, string rightFolder)
     {
         var exe = FindExecutable()
             ?? throw new InvalidOperationException("WinMerge was selected, but WinMergeU.exe could not be found.");
         Process.Start(CreateStartInfo(exe, leftFolder, rightFolder));
+    }
+
+    public void OpenMany(IReadOnlyList<DiffPair> pairs)
+    {
+        if (pairs.Count == 0) return;
+        if (pairs.Count == 1)
+        {
+            Open(pairs[0].LeftFolder, pairs[0].RightFolder);
+            return;
+        }
+
+        var exe = FindExecutable()
+            ?? throw new InvalidOperationException("WinMerge was selected, but WinMergeU.exe could not be found.");
+        var filter = WinMergeFilter.Resolve(exe);
+        // Project <filter> takes a name; the CLI /f below carries the resolved value
+        // (a name or a generated .flt path) and wins when they differ.
+        var projectFile = WinMergeProjectFile.Write(pairs);
+        Process.Start(CreateProjectStartInfo(exe, projectFile, filter));
+    }
+
+    public static ProcessStartInfo CreateProjectStartInfo(string exe, string projectFile, string? filter = null)
+    {
+        // /r recurse, /s single-instance so every tab lands in one window.
+        var psi = new ProcessStartInfo { FileName = exe, UseShellExecute = true };
+        psi.ArgumentList.Add("/r");
+        psi.ArgumentList.Add("/s");
+        if (!string.IsNullOrEmpty(filter))
+        {
+            psi.ArgumentList.Add("/f");
+            psi.ArgumentList.Add(filter);
+        }
+        psi.ArgumentList.Add(projectFile);
+        return psi;
     }
 
     public static ProcessStartInfo CreateStartInfo(string exe, string leftFolder, string rightFolder)
@@ -43,6 +78,8 @@ public sealed class WinMergeDiffTool : IDiffTool
         psi.ArgumentList.Add("/r");
         psi.ArgumentList.Add("/ul");
         psi.ArgumentList.Add("/ur");
+        psi.ArgumentList.Add("/f");
+        psi.ArgumentList.Add(WinMergeFilter.Resolve(exe));
         psi.ArgumentList.Add("/dl");
         psi.ArgumentList.Add("Legacy");
         psi.ArgumentList.Add("/dr");

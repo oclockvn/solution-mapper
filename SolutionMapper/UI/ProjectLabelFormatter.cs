@@ -1,10 +1,43 @@
+using System.Runtime.CompilerServices;
 using SolutionMapper.Mapping;
 
 namespace SolutionMapper.UI;
 
 public static class ProjectLabelFormatter
 {
-    public static string Format(ProjectMapping m, string legacyRoot, string upgradedRoot)
+    // The display label and search text for a mapping never change once mapping is done,
+    // but the interactive picker recomputes them on every keystroke-filter and on every
+    // Spectre list redraw. Cache per mapping instance (roots are constant within a run).
+    sealed record Cached(string Label, string SearchBlob);
+
+    static readonly ConditionalWeakTable<ProjectMapping, Cached> LabelCache = new();
+
+    static Cached GetCached(ProjectMapping m, string legacyRoot, string upgradedRoot) =>
+        LabelCache.GetValue(m, key =>
+        {
+            using var _ = Metrics.Measure("ProjectLabelFormatter build (cache miss)");
+            var label = BuildLabel(key, legacyRoot, upgradedRoot);
+            var blob = string.Join('\n', new[]
+                {
+                    key.Name, label, key.LegacyFolder, key.UpgradedFolder
+                }
+                .Where(s => !string.IsNullOrEmpty(s)))
+                .ToLowerInvariant();
+            return new Cached(label, blob);
+        });
+
+    public static string Format(ProjectMapping m, string legacyRoot, string upgradedRoot) =>
+        GetCached(m, legacyRoot, upgradedRoot).Label;
+
+    public static bool MatchesFilter(
+        ProjectMapping m, string filter, string legacyRoot, string upgradedRoot)
+    {
+        using var _ = Metrics.Measure("ProjectLabelFormatter.MatchesFilter (per call)");
+        var blob = GetCached(m, legacyRoot, upgradedRoot).SearchBlob;
+        return blob.Contains(filter.ToLowerInvariant(), StringComparison.Ordinal);
+    }
+
+    static string BuildLabel(ProjectMapping m, string legacyRoot, string upgradedRoot)
     {
         var status = m.Status switch
         {
@@ -19,24 +52,6 @@ public static class ProjectLabelFormatter
         return string.IsNullOrEmpty(hint)
             ? $"{m.Name}{status}"
             : $"{m.Name}{status}  {hint}";
-    }
-
-    public static bool MatchesFilter(
-        ProjectMapping m, string filter, string legacyRoot, string upgradedRoot)
-    {
-        if (m.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        var label = Format(m, legacyRoot, upgradedRoot);
-        if (label.Contains(filter, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (m.LegacyFolder?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true)
-            return true;
-        if (m.UpgradedFolder?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true)
-            return true;
-
-        return false;
     }
 
     static string PathHint(ProjectMapping m, string legacyRoot, string upgradedRoot)
