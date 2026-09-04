@@ -1,19 +1,29 @@
+using SolutionMapper.UI;
+
 namespace SolutionMapper.Mapping;
 
 public static class ProjectMapper
 {
-    public static IReadOnlyList<ProjectMapping> Map(string legacyRoot, string upgradedRoot)
+    public static IReadOnlyList<ProjectMapping> Map(string legacyRoot, string upgradedRoot) =>
+        Map(SolutionScan.Create(legacyRoot), SolutionScan.Create(upgradedRoot));
+
+    public static IReadOnlyList<ProjectMapping> Map(SolutionScan legacyScan, SolutionScan upgradedScan)
     {
-        var legacy = ProjectDiscovery.FindProjects(legacyRoot);
-        var upgraded = ProjectDiscovery.FindProjects(upgradedRoot);
+        using var _ = Metrics.Measure("ProjectMapper.Map (total)");
+        var legacy = legacyScan.ProjectFiles;
+        var upgraded = upgradedScan.ProjectFiles;
 
         var legacyByName = legacy.GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key!, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
         var upgradedByName = upgraded.GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key!, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
-        var names = legacyByName.Keys.Union(upgradedByName.Keys, StringComparer.OrdinalIgnoreCase);
+        var names = legacyByName.Keys.Union(upgradedByName.Keys, StringComparer.OrdinalIgnoreCase).ToList();
         var results = new List<ProjectMapping>();
+
+        // M×N groups need metadata for every project on both sides; warm the cache in one
+        // parallel pass so the sequential group loop below only ever hits cached reads.
+        WarmMxNMetadata(names, legacyByName, upgradedByName);
 
         foreach (var fileName in names)
         {
@@ -58,8 +68,11 @@ public static class ProjectMapper
             }
 
             // M×N duplicates: greedy strongest pairs
-            var leftMeta = leftList.Select(p => (Path: p, Meta: ProjectMetadataReader.TryRead(p))).ToList();
-            var rightMeta = rightList.Select(p => (Path: p, Meta: ProjectMetadataReader.TryRead(p))).ToList();
+            using var mxn = Metrics.Measure("ProjectMapper M×N group (cached meta + pairs + sort)");
+            Metrics.Count("M×N groups");
+            Metrics.Count("M×N pairs scored", (long)leftList.Count * rightList.Count);
+            var leftMeta = leftList.Select(p => (Path: p, Meta: ProjectMetadataReader.Read(p))).ToList();
+            var rightMeta = rightList.Select(p => (Path: p, Meta: ProjectMetadataReader.Read(p))).ToList();
             var usedRight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var usedLeft = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -87,6 +100,30 @@ public static class ProjectMapper
             .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(m => m.UpgradedFolder ?? m.LegacyFolder, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    static void WarmMxNMetadata(
+        IReadOnlyList<string> names,
+        Dictionary<string, List<string>> legacyByName,
+        Dictionary<string, List<string>> upgradedByName)
+    {
+        var toRead = new List<string>();
+        foreach (var fileName in names)
+        {
+            var l = legacyByName.TryGetValue(fileName, out var ll) ? ll.Count : 0;
+            var r = upgradedByName.TryGetValue(fileName, out var rl) ? rl.Count : 0;
+            // only the true M×N branch reads metadata (see group loop); mirror its guard
+            if (l >= 2 && r >= 2)
+            {
+                toRead.AddRange(legacyByName[fileName]);
+                toRead.AddRange(upgradedByName[fileName]);
+            }
+        }
+        if (toRead.Count == 0) return;
+
+        using var _ = Metrics.Measure("ProjectMapper.WarmMxNMetadata (parallel pre-read)");
+        Metrics.Count("M×N metadata files pre-read", toRead.Count);
+        Parallel.ForEach(toRead, p => ProjectMetadataReader.Read(p));
     }
 
     static ProjectMapping Create(

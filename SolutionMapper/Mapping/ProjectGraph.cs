@@ -19,6 +19,7 @@ public sealed class ProjectGraph
 
     public static ProjectGraph Build(IReadOnlyList<string> projectFiles)
     {
+        using var _ = UI.Metrics.Measure("ProjectGraph.Build (total, incl. TryRead per project)");
         var known = new HashSet<string>(
             projectFiles.Select(Path.GetFullPath),
             StringComparer.OrdinalIgnoreCase);
@@ -34,7 +35,7 @@ public sealed class ProjectGraph
         foreach (var projectFile in projectFiles)
         {
             var full = Path.GetFullPath(projectFile);
-            var meta = ProjectMetadataReader.TryRead(full);
+            var meta = ProjectMetadataReader.Read(full);
             var deps = new List<string>();
 
             if (meta is not null)

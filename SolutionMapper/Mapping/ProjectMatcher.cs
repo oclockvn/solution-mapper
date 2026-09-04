@@ -1,9 +1,12 @@
+using SolutionMapper.UI;
+
 namespace SolutionMapper.Mapping;
 
 public static class ProjectMatcher
 {
     public static int Score(ProjectMetadata? left, ProjectMetadata? right, string fileName)
     {
+        using var _ = Metrics.Measure("ProjectMatcher.Score (per pair)");
         var score = 100; // same filename group
         if (left is null || right is null) return score;
 

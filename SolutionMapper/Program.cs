@@ -5,6 +5,8 @@ using SolutionMapper.UI;
 
 Trace.Log($"build: {typeof(Program).Assembly.GetName().Version} at {typeof(Program).Assembly.Location}");
 
+AppDomain.CurrentDomain.ProcessExit += (_, _) => Metrics.Dump("solution-mapper run");
+
 string? exportPath = null;
 var positional = new List<string>();
 for (var i = 0; i < args.Length; i++)
@@ -139,19 +141,21 @@ try
 
     IReadOnlyList<ProjectMapping> mappings = null!;
     ProjectGraph legacyGraph = null!;
+    using (Metrics.Measure("pipeline: scan + map + graph"))
     AnsiConsole.Status()
         .Spinner(Spinner.Known.Dots)
         .Start("Scanning projects...", ctx =>
         {
-            ProjectDiscovery.EnsureHasProjects(legacyRoot, "Legacy");
+            var legacyScan = SolutionScan.Create(legacyRoot);
+            legacyScan.EnsureHasProjects();
             ctx.Status("Scanning upgraded...");
-            ProjectDiscovery.EnsureHasProjects(upgradedRoot, "Upgraded");
+            var upgradedScan = SolutionScan.Create(upgradedRoot);
+            upgradedScan.EnsureHasProjects();
             ctx.Status("Mapping projects...");
-            mappings = ProjectMapper.Map(legacyRoot, upgradedRoot);
+            mappings = ProjectMapper.Map(legacyScan, upgradedScan);
             ctx.Status("Building dependency graph...");
-            var legacyFiles = ProjectDiscovery.FindProjects(legacyRoot);
-            legacyGraph = ProjectGraph.Build(legacyFiles);
-            Trace.Log($"legacy graph built from {legacyFiles.Count} project file(s)");
+            legacyGraph = ProjectGraph.Build(legacyScan.ProjectFiles);
+            Trace.Log($"legacy graph built from {legacyScan.ProjectFiles.Count} project file(s)");
         });
 
     if (exportPath is not null)

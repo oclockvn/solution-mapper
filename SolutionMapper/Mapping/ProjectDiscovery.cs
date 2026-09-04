@@ -1,19 +1,15 @@
 namespace SolutionMapper.Mapping;
 
+/// <summary>
+/// Thin convenience wrapper over <see cref="SolutionScan"/> for callers that only need
+/// the project list. The production pipeline uses <see cref="SolutionScan"/> directly so
+/// the recursive walk runs once per root.
+/// </summary>
 public static class ProjectDiscovery
 {
-    public static IReadOnlyList<string> FindProjects(string root)
-    {
-        if (!Directory.Exists(root))
-            throw new DirectoryNotFoundException($"Error: solution root does not exist.\n\n  {root}");
+    public static IReadOnlyList<string> FindProjects(string root) =>
+        SolutionScan.Create(root).ProjectFiles;
 
-        return Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories).ToList();
-    }
-
-    public static void EnsureHasProjects(string root, string label)
-    {
-        var projects = FindProjects(root);
-        if (projects.Count == 0)
-            throw new InvalidOperationException($"Error: No .csproj files found under:\n\n  {root}");
-    }
+    public static void EnsureHasProjects(string root, string label) =>
+        SolutionScan.Create(root).EnsureHasProjects();
 }
