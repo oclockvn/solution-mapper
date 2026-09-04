@@ -3,6 +3,8 @@ using SolutionMapper.DiffTools;
 using SolutionMapper.Mapping;
 using SolutionMapper.UI;
 
+Trace.Log($"build: {typeof(Program).Assembly.GetName().Version} at {typeof(Program).Assembly.Location}");
+
 string? exportPath = null;
 var positional = new List<string>();
 for (var i = 0; i < args.Length; i++)
@@ -136,6 +138,7 @@ try
     AnsiConsole.WriteLine();
 
     IReadOnlyList<ProjectMapping> mappings = null!;
+    ProjectGraph legacyGraph = null!;
     AnsiConsole.Status()
         .Spinner(Spinner.Known.Dots)
         .Start("Scanning projects...", ctx =>
@@ -145,6 +148,10 @@ try
             ProjectDiscovery.EnsureHasProjects(upgradedRoot, "Upgraded");
             ctx.Status("Mapping projects...");
             mappings = ProjectMapper.Map(legacyRoot, upgradedRoot);
+            ctx.Status("Building dependency graph...");
+            var legacyFiles = ProjectDiscovery.FindProjects(legacyRoot);
+            legacyGraph = ProjectGraph.Build(legacyFiles);
+            Trace.Log($"legacy graph built from {legacyFiles.Count} project file(s)");
         });
 
     if (exportPath is not null)
@@ -153,18 +160,26 @@ try
     MappingSummary.Write(mappings);
     AnsiConsole.WriteLine();
 
-    var selected = ProjectPicker.Pick(mappings, legacyRoot, upgradedRoot);
+    var selected = ProjectPicker.Pick(mappings, legacyRoot, upgradedRoot, legacyGraph);
     if (selected is null || selected.Count == 0) return 0;
 
     var tool = DiffToolPicker.Pick(DiffToolDiscovery.GetAvailable());
     var empty = EmptyFolder.GetPath();
 
-    foreach (var m in selected)
+    var pairs = selected
+        .Select(m => new DiffPair(m.LegacyFolder ?? empty, m.UpgradedFolder ?? empty, m.Name))
+        .ToList();
+
+    if (pairs.Count > 1 && !tool.SupportsSingleWindow)
     {
-        var left = m.LegacyFolder ?? empty;
-        var right = m.UpgradedFolder ?? empty;
-        tool.Open(left, right);
+        AnsiConsole.MarkupLine(
+            "[yellow]⚠ {0} will open {1} separate windows.[/]", tool.Name, pairs.Count);
+        if (!AnsiConsole.Confirm("Continue?", false))
+            return 0;
     }
+
+    Trace.Log($"opening {pairs.Count} pair(s) with {tool.Name} (singleWindow={tool.SupportsSingleWindow})");
+    tool.OpenMany(pairs);
 
     return 0;
 }

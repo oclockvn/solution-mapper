@@ -18,15 +18,19 @@ public static class ProjectMetadataReader
             var rootNs = Prop("RootNamespace");
             if (rootNs is not null && rootNs.Contains("$(")) rootNs = null;
 
-            var refs = doc.Descendants()
+            var refIncludes = doc.Descendants()
                 .Where(e => e.Name.LocalName == "ProjectReference")
                 .Select(e => e.Attribute("Include")?.Value)
                 .Where(v => !string.IsNullOrWhiteSpace(v))
-                .Select(v => Path.GetFileNameWithoutExtension(v!.Replace('\\', '/')))
+                .Select(v => v!.Trim())
+                .ToList();
+
+            var refNames = refIncludes
+                .Select(v => Path.GetFileNameWithoutExtension(v.Replace('\\', '/')))
                 .Where(n => !string.IsNullOrEmpty(n))
                 .ToList();
 
-            return new ProjectMetadata(projectFile, assembly, tfm, rootNs, refs);
+            return new ProjectMetadata(projectFile, assembly, tfm, rootNs, refNames, refIncludes);
         }
         catch
         {

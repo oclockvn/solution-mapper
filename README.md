@@ -43,6 +43,35 @@ cd SolutionMapper\bin\Debug\net10.0
 .\mapper.exe "C:\path\to\legacy-root" "C:\path\to\upgraded-root" --export mapping.json
 ```
 
+## Dependency closure
+
+After picking one or more projects, the tool offers to **include transitive project dependencies**.
+It walks `<ProjectReference>` edges in the legacy tree (resolving each reference relative to its
+`.csproj`, falling back to a unique same-named project when the path layout changed).
+
+To keep the result manageable:
+
+- **Max depth** — you're asked how deep to follow references (`1` = direct references only,
+  blank = the whole closure).
+- **Curate** — the closure is shown as a checklist. Root projects and matched/missing nodes are
+  pre-checked; ambiguous ones are left unchecked. Untick anything you don't want to diff.
+
+Each node shows its depth (`L1`, `L2`, …) and mapping status (`✓` matched, `?` ambiguous,
+`✗` missing on one side), so a dependency that didn't get migrated is obvious. References that
+resolve outside the legacy root are listed and skipped.
+
+### One diff window instead of many
+
+When you diff more than one project, **WinMerge** opens them as tabs in a single window
+(via a generated `.WinMerge` project file — needs WinMerge 2.16.4+). Beyond Compare and VS Code
+have no multi-tab CLI, so they open one window per project after a confirmation prompt.
+
+### Build output is hidden
+
+WinMerge comparisons apply the **Visual C# loose** filter, which hides `bin`, `obj`, `.vs`,
+`.git`, compiled binaries and per-user files. If your WinMerge install doesn't ship that filter,
+an equivalent one is generated to a temp `.flt` and used instead.
+
 ## Diff tools
 
 If installed, these are discovered automatically:
