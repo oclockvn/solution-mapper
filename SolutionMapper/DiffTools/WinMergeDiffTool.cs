@@ -39,7 +39,7 @@ public sealed class WinMergeDiffTool : IDiffTool
         Process.Start(CreateStartInfo(exe, leftFolder, rightFolder));
     }
 
-    public void OpenMany(IReadOnlyList<DiffPair> pairs)
+    public async Task OpenManyAsync(IReadOnlyList<DiffPair> pairs)
     {
         if (pairs.Count == 0) return;
         if (pairs.Count == 1)
@@ -53,7 +53,7 @@ public sealed class WinMergeDiffTool : IDiffTool
         var filter = WinMergeFilter.Resolve(exe);
         // Project <filter> takes a name; the CLI /f below carries the resolved value
         // (a name or a generated .flt path) and wins when they differ.
-        var projectFile = WinMergeProjectFile.Write(pairs);
+        var projectFile = await WinMergeProjectFile.WriteAsync(pairs);
         Process.Start(CreateProjectStartInfo(exe, projectFile, filter));
     }
 

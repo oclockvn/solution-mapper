@@ -14,12 +14,13 @@ public interface IDiffTool
     /// Open several folder pairs. Tools that support a single multi-tab window (WinMerge)
     /// override this; the default opens each pair in its own window.
     /// </summary>
-    void OpenMany(IReadOnlyList<DiffPair> pairs)
+    Task OpenManyAsync(IReadOnlyList<DiffPair> pairs)
     {
         foreach (var p in pairs)
             Open(p.LeftFolder, p.RightFolder);
+        return Task.CompletedTask;
     }
 
-    /// <summary>True when <see cref="OpenMany"/> opens one window instead of one per pair.</summary>
+    /// <summary>True when <see cref="OpenManyAsync"/> opens one window instead of one per pair.</summary>
     bool SupportsSingleWindow => false;
 }
