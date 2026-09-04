@@ -164,6 +164,8 @@ try
     MappingSummary.Write(mappings);
     AnsiConsole.WriteLine();
 
+    ActionMenu.Run(mappings, legacyRoot, upgradedRoot);
+
     var selected = ProjectPicker.Pick(mappings, legacyRoot, upgradedRoot, legacyGraph);
     if (selected is null || selected.Count == 0) return 0;
 

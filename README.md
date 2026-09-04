@@ -43,6 +43,16 @@ cd SolutionMapper\bin\Debug\net10.0
 .\mapper.exe "C:\path\to\legacy-root" "C:\path\to\upgraded-root" --export mapping.json
 ```
 
+## After the summary
+
+Before the project search, the tool asks **What now?**:
+
+- **Search & diff projects** (default) — the normal flow below.
+- **List unmatched projects** — prints every legacy-only and upgraded-only project as its
+  `.csproj` path (relative to that side's root), grouped by side, then returns to the menu.
+
+The menu is skipped when nothing is unmatched.
+
 ## Dependency closure
 
 After picking one or more projects, the tool offers to **include transitive project dependencies**.

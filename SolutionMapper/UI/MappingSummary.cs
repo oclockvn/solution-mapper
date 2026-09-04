@@ -5,6 +5,10 @@ namespace SolutionMapper.UI;
 
 public static class MappingSummary
 {
+    /// <summary>Count of projects present on only one side (legacy-only + upgraded-only).</summary>
+    public static int UnmatchedCount(IReadOnlyList<ProjectMapping> mappings) =>
+        mappings.Count(m => m.Status is MappingStatus.LegacyOnly or MappingStatus.UpgradedOnly);
+
     public static void Write(IReadOnlyList<ProjectMapping> mappings)
     {
         var matched = mappings.Count(m => m.Status == MappingStatus.Matched);
