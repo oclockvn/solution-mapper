@@ -16,7 +16,7 @@ public static class DependencyClosure
 
     /// <param name="root">The mapping the user picked. Must have a <see cref="ProjectMapping.LegacyProjectFile"/>.</param>
     /// <param name="graph">Graph built from the legacy project files.</param>
-    /// <param name="allMappings">Every mapping from <see cref="ProjectMapper.Map"/>.</param>
+    /// <param name="allMappings">Every mapping from <see cref="ProjectMapper.MapAsync(SolutionScan, SolutionScan, CancellationToken)"/>.</param>
     /// <param name="maxDepth">
     /// Deepest reference level to include, counted from the root (root = 0, direct refs = 1).
     /// <c>null</c> or a negative value means no limit.

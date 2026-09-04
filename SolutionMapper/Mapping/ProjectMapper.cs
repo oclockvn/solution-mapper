@@ -4,10 +4,12 @@ namespace SolutionMapper.Mapping;
 
 public static class ProjectMapper
 {
-    public static IReadOnlyList<ProjectMapping> Map(string legacyRoot, string upgradedRoot) =>
-        Map(SolutionScan.Create(legacyRoot), SolutionScan.Create(upgradedRoot));
+    public static Task<IReadOnlyList<ProjectMapping>> MapAsync(
+        string legacyRoot, string upgradedRoot, CancellationToken ct = default) =>
+        MapAsync(SolutionScan.Create(legacyRoot), SolutionScan.Create(upgradedRoot), ct);
 
-    public static IReadOnlyList<ProjectMapping> Map(SolutionScan legacyScan, SolutionScan upgradedScan)
+    public static async Task<IReadOnlyList<ProjectMapping>> MapAsync(
+        SolutionScan legacyScan, SolutionScan upgradedScan, CancellationToken ct = default)
     {
         using var _ = Metrics.Measure("ProjectMapper.Map (total)");
         var legacy = legacyScan.ProjectFiles;
@@ -23,7 +25,7 @@ public static class ProjectMapper
 
         // M×N groups need metadata for every project on both sides; warm the cache in one
         // parallel pass so the sequential group loop below only ever hits cached reads.
-        WarmMxNMetadata(names, legacyByName, upgradedByName);
+        await WarmMxNMetadataAsync(names, legacyByName, upgradedByName, ct);
 
         foreach (var fileName in names)
         {
@@ -71,8 +73,13 @@ public static class ProjectMapper
             using var mxn = Metrics.Measure("ProjectMapper M×N group (cached meta + pairs + sort)");
             Metrics.Count("M×N groups");
             Metrics.Count("M×N pairs scored", (long)leftList.Count * rightList.Count);
-            var leftMeta = leftList.Select(p => (Path: p, Meta: ProjectMetadataReader.Read(p))).ToList();
-            var rightMeta = rightList.Select(p => (Path: p, Meta: ProjectMetadataReader.Read(p))).ToList();
+            // cache is warm from WarmMxNMetadataAsync; these awaits complete synchronously
+            var leftMeta = new List<(string Path, ProjectMetadata? Meta)>(leftList.Count);
+            foreach (var p in leftList)
+                leftMeta.Add((p, await ProjectMetadataReader.ReadAsync(p, ct)));
+            var rightMeta = new List<(string Path, ProjectMetadata? Meta)>(rightList.Count);
+            foreach (var p in rightList)
+                rightMeta.Add((p, await ProjectMetadataReader.ReadAsync(p, ct)));
             var usedRight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var usedLeft = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -102,10 +109,11 @@ public static class ProjectMapper
             .ToList();
     }
 
-    static void WarmMxNMetadata(
+    static async Task WarmMxNMetadataAsync(
         IReadOnlyList<string> names,
         Dictionary<string, List<string>> legacyByName,
-        Dictionary<string, List<string>> upgradedByName)
+        Dictionary<string, List<string>> upgradedByName,
+        CancellationToken ct)
     {
         var toRead = new List<string>();
         foreach (var fileName in names)
@@ -123,7 +131,7 @@ public static class ProjectMapper
 
         using var _ = Metrics.Measure("ProjectMapper.WarmMxNMetadata (parallel pre-read)");
         Metrics.Count("M×N metadata files pre-read", toRead.Count);
-        Parallel.ForEach(toRead, p => ProjectMetadataReader.Read(p));
+        await Task.WhenAll(toRead.Select(p => ProjectMetadataReader.ReadAsync(p, ct)));
     }
 
     static ProjectMapping Create(

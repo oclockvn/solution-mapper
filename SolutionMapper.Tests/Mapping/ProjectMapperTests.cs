@@ -6,14 +6,14 @@ namespace SolutionMapper.Tests.Mapping;
 public class ProjectMapperTests
 {
     [Fact]
-    public void Map_one_to_one_different_nesting()
+    public async Task Map_one_to_one_different_nesting()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
         legacy.AddProject("Old/Services/Billing/Billing.csproj");
         upgraded.AddProject("src/Billing/Billing.csproj");
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
 
         var billing = Assert.Single(map, m => m.Name == "Billing");
         Assert.Equal(MappingStatus.Matched, billing.Status);
@@ -24,21 +24,21 @@ public class ProjectMapperTests
     }
 
     [Fact]
-    public void Map_legacy_only_and_upgraded_only()
+    public async Task Map_legacy_only_and_upgraded_only()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
         legacy.AddProject("Bar/Bar.csproj");
         upgraded.AddProject("Baz/Baz.csproj");
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
 
         Assert.Contains(map, m => m.Name == "Bar" && m.Status == MappingStatus.LegacyOnly);
         Assert.Contains(map, m => m.Name == "Baz" && m.Status == MappingStatus.UpgradedOnly);
     }
 
     [Fact]
-    public void Map_one_legacy_many_upgraded_fans_out()
+    public async Task Map_one_legacy_many_upgraded_fans_out()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
@@ -47,7 +47,7 @@ public class ProjectMapperTests
         upgraded.AddProject("solutions/web/src/Shared/Accounts/Accounts.csproj");
         upgraded.AddProject("solutions/reporting/src/Shared/Accounts/Accounts.csproj");
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
         var accounts = map.Where(m => m.Name == "Accounts").ToList();
 
         Assert.Equal(3, accounts.Count);
@@ -66,7 +66,7 @@ public class ProjectMapperTests
     }
 
     [Fact]
-    public void Map_many_legacy_one_upgraded_fans_out()
+    public async Task Map_many_legacy_one_upgraded_fans_out()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
@@ -77,7 +77,7 @@ public class ProjectMapperTests
         upgraded.AddProject("src/Foo/Foo.csproj",
             TempSolutionTree.MinimalCsproj("Foo", "net10.0", "Foo"));
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
         var foos = map.Where(m => m.ProjectFileName.Equals("Foo.csproj", StringComparison.OrdinalIgnoreCase)).ToList();
 
         Assert.Equal(2, foos.Count);
@@ -91,7 +91,7 @@ public class ProjectMapperTests
     }
 
     [Fact]
-    public void Map_many_to_many_still_scores_greedy_pairs()
+    public async Task Map_many_to_many_still_scores_greedy_pairs()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
@@ -100,7 +100,7 @@ public class ProjectMapperTests
         upgraded.AddProject("X/Foo/Foo.csproj", TempSolutionTree.MinimalCsproj("FooA", "net10.0", "FooA"));
         upgraded.AddProject("Y/Foo/Foo.csproj", TempSolutionTree.MinimalCsproj("FooB", "net10.0", "FooB"));
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
         var foos = map.Where(m => m.Name == "Foo").ToList();
 
         Assert.Equal(2, foos.Count);
@@ -116,7 +116,7 @@ public class ProjectMapperTests
     }
 
     [Fact]
-    public void Map_duplicate_filenames_picks_strongest_and_marks_ambiguous()
+    public async Task Map_duplicate_filenames_picks_strongest_and_marks_ambiguous()
     {
         // kept name: now covered by Map_many_legacy_one_upgraded_fans_out + Map_many_to_many
         using var legacy = TempSolutionTree.Create();
@@ -128,7 +128,7 @@ public class ProjectMapperTests
         upgraded.AddProject("src/Foo/Foo.csproj",
             TempSolutionTree.MinimalCsproj("Foo", "net10.0", "Foo"));
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
 
         var matched = map.Where(m => m.ProjectFileName.Equals("Foo.csproj", StringComparison.OrdinalIgnoreCase)
             && m.Status is MappingStatus.Matched or MappingStatus.Ambiguous).ToList();
@@ -137,19 +137,19 @@ public class ProjectMapperTests
     }
 
     [Fact]
-    public void Map_case_insensitive_filenames()
+    public async Task Map_case_insensitive_filenames()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
         legacy.AddProject("a/Billing.csproj");
         upgraded.AddProject("b/billing.csproj");
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
         Assert.Contains(map, m => m.Status == MappingStatus.Matched);
     }
 
     [Fact]
-    public void Map_continues_when_csproj_corrupt()
+    public async Task Map_continues_when_csproj_corrupt()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
@@ -158,7 +158,7 @@ public class ProjectMapperTests
         upgraded.AddProject("Good/Good.csproj");
         upgraded.AddProject("Bad/Bad.csproj", "<<<");
 
-        var map = ProjectMapper.Map(legacy.Root, upgraded.Root);
+        var map = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
         Assert.Contains(map, m => m.Name == "Good" && m.Status == MappingStatus.Matched);
     }
 }

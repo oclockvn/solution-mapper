@@ -17,7 +17,8 @@ public sealed class ProjectGraph
         _known = known;
     }
 
-    public static ProjectGraph Build(IReadOnlyList<string> projectFiles)
+    public static async Task<ProjectGraph> BuildAsync(
+        IReadOnlyList<string> projectFiles, CancellationToken ct = default)
     {
         using var _ = UI.Metrics.Measure("ProjectGraph.Build (total, incl. TryRead per project)");
         var known = new HashSet<string>(
@@ -30,12 +31,17 @@ public sealed class ProjectGraph
             .ToDictionary(g => g.Key, g => g.Select(Path.GetFullPath).ToList(),
                 StringComparer.OrdinalIgnoreCase);
 
+        // pre-warm every project's metadata in one parallel pass (mirrors
+        // ProjectMapper.WarmMxNMetadataAsync); the loop below then hits cached reads.
+        await Task.WhenAll(projectFiles.Select(p =>
+            ProjectMetadataReader.ReadAsync(Path.GetFullPath(p), ct)));
+
         var edges = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var projectFile in projectFiles)
         {
             var full = Path.GetFullPath(projectFile);
-            var meta = ProjectMetadataReader.Read(full);
+            var meta = await ProjectMetadataReader.ReadAsync(full, ct);
             var deps = new List<string>();
 
             if (meta is not null)
