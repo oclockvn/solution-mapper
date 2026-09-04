@@ -7,7 +7,7 @@ namespace SolutionMapper.Tests.Mapping;
 public class MappingExportTests
 {
     [Fact]
-    public void Write_emits_roots_and_projects()
+    public async Task Write_emits_roots_and_projects()
     {
         using var dir = TempSolutionTree.Create();
         var outPath = Path.Combine(dir.Root, "mapping.json");
@@ -25,7 +25,7 @@ public class MappingExportTests
             }
         };
 
-        MappingExport.Write(outPath, @"C:\L", @"C:\N", projects);
+        await MappingExport.WriteAsync(outPath, @"C:\L", @"C:\N", projects);
 
         using var doc = JsonDocument.Parse(File.ReadAllText(outPath));
         Assert.Equal(@"C:\L", doc.RootElement.GetProperty("legacyRoot").GetString());

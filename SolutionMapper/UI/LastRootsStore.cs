@@ -17,14 +17,15 @@ public static class LastRootsStore
         "SolutionMapper",
         "last-roots.json");
 
-    public static LastRoots? TryLoad(string? storePath = null)
+    public static async Task<LastRoots?> TryLoadAsync(
+        string? storePath = null, CancellationToken ct = default)
     {
         var path = storePath ?? DefaultPath;
         if (!File.Exists(path)) return null;
 
         try
         {
-            var json = File.ReadAllText(path);
+            var json = await File.ReadAllTextAsync(path, ct);
             var dto = JsonSerializer.Deserialize<LastRootsDto>(json, JsonOptions);
             if (dto is null
                 || string.IsNullOrWhiteSpace(dto.LegacyRoot)
@@ -44,7 +45,8 @@ public static class LastRootsStore
         }
     }
 
-    public static void Save(string legacyRoot, string upgradedRoot, string? storePath = null)
+    public static Task SaveAsync(
+        string legacyRoot, string upgradedRoot, string? storePath = null, CancellationToken ct = default)
     {
         var path = storePath ?? DefaultPath;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -53,7 +55,7 @@ public static class LastRootsStore
             LegacyRoot = Path.GetFullPath(legacyRoot),
             UpgradedRoot = Path.GetFullPath(upgradedRoot)
         };
-        File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOptions));
+        return File.WriteAllTextAsync(path, JsonSerializer.Serialize(dto, JsonOptions), ct);
     }
 
     sealed class LastRootsDto

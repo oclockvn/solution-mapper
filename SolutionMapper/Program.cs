@@ -50,7 +50,7 @@ else
     var reused = false;
     if (positional.Count == 0)
     {
-        var last = LastRootsStore.TryLoad();
+        var last = await LastRootsStore.TryLoadAsync();
         if (last is not null)
         {
             AnsiConsole.WriteLine("Last roots:");
@@ -127,7 +127,7 @@ try
         return 1;
     }
 
-    LastRootsStore.Save(legacyRoot, upgradedRoot);
+    await LastRootsStore.SaveAsync(legacyRoot, upgradedRoot);
 
     AnsiConsole.WriteLine("Solution Mapper");
     AnsiConsole.WriteLine(new string('─', 44));
@@ -142,9 +142,9 @@ try
     IReadOnlyList<ProjectMapping> mappings = null!;
     ProjectGraph legacyGraph = null!;
     using (Metrics.Measure("pipeline: scan + map + graph"))
-    AnsiConsole.Status()
+    await AnsiConsole.Status()
         .Spinner(Spinner.Known.Dots)
-        .Start("Scanning projects...", ctx =>
+        .StartAsync("Scanning projects...", async ctx =>
         {
             var legacyScan = SolutionScan.Create(legacyRoot);
             legacyScan.EnsureHasProjects();
@@ -152,14 +152,14 @@ try
             var upgradedScan = SolutionScan.Create(upgradedRoot);
             upgradedScan.EnsureHasProjects();
             ctx.Status("Mapping projects...");
-            mappings = ProjectMapper.Map(legacyScan, upgradedScan);
+            mappings = await ProjectMapper.MapAsync(legacyScan, upgradedScan);
             ctx.Status("Building dependency graph...");
-            legacyGraph = ProjectGraph.Build(legacyScan.ProjectFiles);
+            legacyGraph = await ProjectGraph.BuildAsync(legacyScan.ProjectFiles);
             Trace.Log($"legacy graph built from {legacyScan.ProjectFiles.Count} project file(s)");
         });
 
     if (exportPath is not null)
-        MappingExport.Write(Path.GetFullPath(exportPath), legacyRoot, upgradedRoot, mappings);
+        await MappingExport.WriteAsync(Path.GetFullPath(exportPath), legacyRoot, upgradedRoot, mappings);
 
     MappingSummary.Write(mappings);
     AnsiConsole.WriteLine();

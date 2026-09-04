@@ -6,13 +6,13 @@ namespace SolutionMapper.Tests.UI;
 public class LastRootsStoreTests
 {
     [Fact]
-    public void Save_then_TryLoad_round_trips()
+    public async Task Save_then_TryLoad_round_trips()
     {
         using var dirs = new DualTempDirs();
         var store = Path.Combine(Path.GetTempPath(), "SolutionMapperTests", Guid.NewGuid().ToString("N"), "last-roots.json");
 
-        LastRootsStore.Save(dirs.Legacy, dirs.Upgraded, store);
-        var loaded = LastRootsStore.TryLoad(store);
+        await LastRootsStore.SaveAsync(dirs.Legacy, dirs.Upgraded, store);
+        var loaded = await LastRootsStore.TryLoadAsync(store);
 
         Assert.NotNull(loaded);
         Assert.Equal(Path.GetFullPath(dirs.Legacy), loaded!.LegacyRoot);
@@ -20,21 +20,21 @@ public class LastRootsStoreTests
     }
 
     [Fact]
-    public void TryLoad_missing_file_returns_null()
+    public async Task TryLoad_missing_file_returns_null()
     {
         var missing = Path.Combine(Path.GetTempPath(), "SolutionMapperTests", Guid.NewGuid().ToString("N"), "nope.json");
-        Assert.Null(LastRootsStore.TryLoad(missing));
+        Assert.Null(await LastRootsStore.TryLoadAsync(missing));
     }
 
     [Fact]
-    public void TryLoad_stale_directory_returns_null()
+    public async Task TryLoad_stale_directory_returns_null()
     {
         using var dirs = new DualTempDirs();
         var store = Path.Combine(Path.GetTempPath(), "SolutionMapperTests", Guid.NewGuid().ToString("N"), "last-roots.json");
-        LastRootsStore.Save(dirs.Legacy, dirs.Upgraded, store);
+        await LastRootsStore.SaveAsync(dirs.Legacy, dirs.Upgraded, store);
         Directory.Delete(dirs.Upgraded, true);
 
-        Assert.Null(LastRootsStore.TryLoad(store));
+        Assert.Null(await LastRootsStore.TryLoadAsync(store));
     }
 }
 

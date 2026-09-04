@@ -6,7 +6,7 @@ namespace SolutionMapper.Tests.Mapping;
 public class DependencyClosureTests
 {
     [Fact]
-    public void Expand_translates_legacy_closure_to_mappings()
+    public async Task Expand_translates_legacy_closure_to_mappings()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
@@ -21,8 +21,8 @@ public class DependencyClosureTests
         upgraded.AddProject("src/Exceptions/Exceptions.csproj", TempSolutionTree.MinimalCsproj("Exceptions"));
         upgraded.AddProject("src/Core/Core.csproj", TempSolutionTree.MinimalCsproj("Core"));
 
-        var mappings = ProjectMapper.Map(legacy.Root, upgraded.Root);
-        var graph = ProjectGraph.Build(ProjectDiscovery.FindProjects(legacy.Root));
+        var mappings = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
+        var graph = await ProjectGraph.BuildAsync(ProjectDiscovery.FindProjects(legacy.Root));
         var web = Assert.Single(mappings, m => m.Name == "Web");
 
         var result = DependencyClosure.Expand(web, graph, mappings);
@@ -38,7 +38,7 @@ public class DependencyClosureTests
     }
 
     [Fact]
-    public void Expand_reports_dependency_missing_from_upgraded_tree()
+    public async Task Expand_reports_dependency_missing_from_upgraded_tree()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
@@ -48,8 +48,8 @@ public class DependencyClosureTests
         legacy.AddProject("Dropped/Dropped.csproj", TempSolutionTree.MinimalCsproj("Dropped"));
         upgraded.AddProject("src/Web/Web.csproj", TempSolutionTree.MinimalCsproj("Web"));
 
-        var mappings = ProjectMapper.Map(legacy.Root, upgraded.Root);
-        var graph = ProjectGraph.Build(ProjectDiscovery.FindProjects(legacy.Root));
+        var mappings = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
+        var graph = await ProjectGraph.BuildAsync(ProjectDiscovery.FindProjects(legacy.Root));
         var web = Assert.Single(mappings, m => m.Name == "Web");
 
         var result = DependencyClosure.Expand(web, graph, mappings);
@@ -59,7 +59,7 @@ public class DependencyClosureTests
     }
 
     [Fact]
-    public void Expand_respects_max_depth()
+    public async Task Expand_respects_max_depth()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
@@ -74,8 +74,8 @@ public class DependencyClosureTests
         foreach (var n in new[] { "Web", "L1", "L2", "L3" })
             upgraded.AddProject($"src/{n}/{n}.csproj", TempSolutionTree.MinimalCsproj(n));
 
-        var mappings = ProjectMapper.Map(legacy.Root, upgraded.Root);
-        var graph = ProjectGraph.Build(ProjectDiscovery.FindProjects(legacy.Root));
+        var mappings = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
+        var graph = await ProjectGraph.BuildAsync(ProjectDiscovery.FindProjects(legacy.Root));
         var web = Assert.Single(mappings, m => m.Name == "Web");
 
         var d1 = DependencyClosure.Expand(web, graph, mappings, maxDepth: 1);
@@ -93,15 +93,15 @@ public class DependencyClosureTests
     }
 
     [Fact]
-    public void Expand_returns_root_only_when_no_legacy_file()
+    public async Task Expand_returns_root_only_when_no_legacy_file()
     {
         using var legacy = TempSolutionTree.Create();
         using var upgraded = TempSolutionTree.Create();
         legacy.AddProject("Web/Web.csproj", TempSolutionTree.MinimalCsproj("Web"));
         upgraded.AddProject("src/New/New.csproj", TempSolutionTree.MinimalCsproj("New"));
 
-        var mappings = ProjectMapper.Map(legacy.Root, upgraded.Root);
-        var graph = ProjectGraph.Build(ProjectDiscovery.FindProjects(legacy.Root));
+        var mappings = await ProjectMapper.MapAsync(legacy.Root, upgraded.Root);
+        var graph = await ProjectGraph.BuildAsync(ProjectDiscovery.FindProjects(legacy.Root));
         var upgradedOnly = Assert.Single(mappings, m => m.Name == "New");
 
         var result = DependencyClosure.Expand(upgradedOnly, graph, mappings);
