@@ -21,8 +21,8 @@ public class WinMergeProjectFileTests
         Assert.Equal(2, paths.Count);
         Assert.Equal(@"C:\legacy\A", paths[0].Element("left")!.Value);
         Assert.Equal(@"C:\up\A", paths[0].Element("right")!.Value);
-        Assert.Equal("1", paths[0].Element("left-readonly")!.Value);
-        Assert.Equal("1", paths[0].Element("right-readonly")!.Value);
+        Assert.Null(paths[0].Element("left-readonly"));
+        Assert.Null(paths[0].Element("right-readonly"));
         Assert.Equal("1", paths[0].Element("subfolders")!.Value);
         Assert.Contains("A", paths[0].Element("left-desc")!.Value);
     }
@@ -65,9 +65,9 @@ public class WinMergeProjectFileTests
     }
 
     [Fact]
-    public void Write_creates_a_winmerge_file_on_disk()
+    public async Task Write_creates_a_winmerge_file_on_disk()
     {
-        var path = WinMergeProjectFile.Write([new DiffPair(@"C:\l", @"C:\r", "x")]);
+        var path = await WinMergeProjectFile.WriteAsync([new DiffPair(@"C:\l", @"C:\r", "x")]);
         try
         {
             Assert.True(File.Exists(path));
@@ -93,10 +93,10 @@ public class WinMergeProjectFileTests
     }
 
     [Fact]
-    public void Default_OpenMany_falls_back_to_one_open_per_pair()
+    public async Task Default_OpenMany_falls_back_to_one_open_per_pair()
     {
         var fake = new RecordingDiffTool();
-        ((IDiffTool)fake).OpenMany(
+        await ((IDiffTool)fake).OpenManyAsync(
         [
             new DiffPair(@"C:\a", @"C:\b", "1"),
             new DiffPair(@"C:\c", @"C:\d", "2"),

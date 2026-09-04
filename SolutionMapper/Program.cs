@@ -185,7 +185,7 @@ try
     }
 
     Trace.Log($"opening {pairs.Count} pair(s) with {tool.Name} (singleWindow={tool.SupportsSingleWindow})");
-    tool.OpenMany(pairs);
+    await tool.OpenManyAsync(pairs);
 
     return 0;
 }
